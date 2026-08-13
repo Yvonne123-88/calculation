@@ -179,10 +179,10 @@ T/B:线轴长=经长×经盘数 | 订购线轴=线轴长/上架次+200 | 线轴�
 </div>
 <button class="calc-btn" id="optBtn">查找最优解</button>
 <div style="font-size:10px;font-weight:600;color:#374151;margin:6px 0 3px">Top 最优解</div>
-<div class="ref-wrap" style="max-height:220px"><table class="ref-table"><thead><tr><th>描述</th><th>经盘</th><th>线轴</th><th>盘余</th><th>上架</th><th>最大经长</th><th>最优整经长</th><th>所需线轴长</th><th>翻倍</th><th>需线轴数</th><th>浪费</th><th>状态</th></tr></thead><tbody id="optTopBody"></tbody></table></div>
+<div class="ref-wrap" style="max-height:220px"><table class="ref-table"><thead><tr><th>描述</th><th>经盘</th><th>线轴</th><th>盘余</th><th>上架</th><th>最大经长</th><th>最优整经长</th><th>所需线轴长</th><th>翻倍</th><th>需线轴数</th><th>多余线轴</th><th>线轴长浪费</th><th>多余浪费</th><th>总浪费</th><th>状态</th></tr></thead><tbody id="optTopBody"></tbody></table></div>
 <div id="optTopRec" style="font-size:10px;color:#1e40af;margin:3px 0 6px"></div>
 <div style="font-size:10px;font-weight:600;color:#374151;margin:6px 0 3px">Bot 最优解</div>
-<div class="ref-wrap" style="max-height:220px"><table class="ref-table"><thead><tr><th>描述</th><th>经盘</th><th>线轴</th><th>盘余</th><th>上架</th><th>最大经长</th><th>最优整经长</th><th>所需线轴长</th><th>翻倍</th><th>需线轴数</th><th>浪费</th><th>状态</th></tr></thead><tbody id="optBotBody"></tbody></table></div>
+<div class="ref-wrap" style="max-height:220px"><table class="ref-table"><thead><tr><th>描述</th><th>经盘</th><th>线轴</th><th>盘余</th><th>上架</th><th>最大经长</th><th>最优整经长</th><th>所需线轴长</th><th>翻倍</th><th>需线轴数</th><th>多余线轴</th><th>线轴长浪费</th><th>多余浪费</th><th>总浪费</th><th>状态</th></tr></thead><tbody id="optBotBody"></tbody></table></div>
 <div id="optBotRec" style="font-size:10px;color:#1e40af;margin:3px 0 0"></div>
 </div>
 
@@ -411,30 +411,31 @@ function optBest(d,orderLen,orderQty){
   var l2=Math.min(n.maxL,orderLen/(2*n.beam));
   if(l2>0&&l2*n.beam>n.maxSL)cands.push({L:l2,len:l2*n.beam*2,double:true});
   if(!cands.length)return {ok:false,reason:'无可行整经长度',qty:qty,need:n};
-  cands.sort(function(a,b){return b.len-a.len});
+  cands.forEach(function(c){c.diff=n.maxL-c.L;c.lossLen=Math.max(0,orderLen-c.len);c.extraSpool=Math.max(0,orderQty-qty);c.extraWaste=c.extraSpool*orderLen;c.totalWaste=c.lossLen+c.extraWaste});
+  cands.sort(function(a,b){return a.diff-b.diff||a.totalWaste-b.totalWaste});
   var best=cands[0];
-  return {ok:true,reason:'可用',best:best,waste:orderLen-best.len,qty:qty,need:n}
+  return {ok:true,reason:'可用',best:best,waste:best.totalWaste,qty:qty,need:n}
 }
 function renderOpt(bodyId,recId,rows,orderLen,orderQty,tb){
   var body=document.getElementById(bodyId),rec=document.getElementById(recId);
-  if(!rows.length){body.innerHTML='<tr><td colspan="12" style="padding:12px;text-align:center;color:#9ca3af">未找到 '+tb+' 匹配数据</td></tr>';rec.textContent='';return}
+  if(!rows.length){body.innerHTML='<tr><td colspan="15" style="padding:12px;text-align:center;color:#9ca3af">未找到 '+tb+' 匹配数据</td></tr>';rec.textContent='';return}
   var html='',bestItem=null;
   rows.forEach(function(d){
     var r=optBest(d,orderLen,orderQty);
-    if(!r){html+='<tr><td colspan="12">参数缺失</td></tr>';return}
+    if(!r){html+='<tr><td colspan="15">参数缺失</td></tr>';return}
     var n=r.need;
     html+='<tr style="opacity:'+(r.ok?1:.5)+'">';
     html+='<td>'+n.desc+'</td><td>'+n.beam+'</td><td>'+n.spool+'</td><td>'+n.rem+'</td><td>'+n.times+'</td><td>'+n.maxL+'</td>';
     if(r.ok){
-      html+='<td>'+fm(r.best.L)+'</td><td>'+fm(r.best.len)+'</td><td>'+(r.best.double?'是':'否')+'</td><td>'+fm(r.qty)+'</td><td>'+fm(r.waste)+'</td><td>可用</td>';
-      if(!bestItem||r.waste<bestItem.r.waste)bestItem={d:d,r:r}
+      html+='<td>'+fm(r.best.L)+'</td><td>'+fm(r.best.len)+'</td><td>'+(r.best.double?'是':'否')+'</td><td>'+fm(r.qty)+'</td><td>'+fm(r.best.extraSpool)+'</td><td>'+fm(r.best.lossLen)+'</td><td>'+fm(r.best.extraWaste)+'</td><td>'+fm(r.best.totalWaste)+'</td><td>可用</td>';
+      if(!bestItem||r.best.totalWaste<bestItem.r.best.totalWaste)bestItem={d:d,r:r}
     }else{
-      html+='<td colspan="5" style="color:#dc2626">'+r.reason+'</td>'
+      html+='<td colspan="9" style="color:#dc2626">'+r.reason+'</td>'
     }
     html+='</tr>'
   });
   body.innerHTML=html;
-  rec.textContent=bestItem?'推荐：'+bestItem.r.need.desc+' | 最优整经长度 '+fm(bestItem.r.best.L)+' | 所需线轴长 '+fm(bestItem.r.best.len)+' | 浪费 '+fm(bestItem.r.waste):'无可用匹配方案'
+  rec.textContent=bestItem?'推荐：'+bestItem.r.need.desc+' | 最优整经长度 '+fm(bestItem.r.best.L)+' | 所需线轴长 '+fm(bestItem.r.best.len)+' | 线轴长浪费 '+fm(bestItem.r.best.lossLen)+' | 多余线轴浪费 '+fm(bestItem.r.best.extraWaste)+' | 总浪费 '+fm(bestItem.r.best.totalWaste):'无可用匹配方案'
 }
 document.getElementById('optBtn').addEventListener('click',function(){
   var loom=document.getElementById('optLoom').value.trim().toUpperCase();
