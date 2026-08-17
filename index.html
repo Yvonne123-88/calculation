@@ -398,7 +398,7 @@ document.getElementById('clearBtn').addEventListener('click',function(){
   calcAll()
 });
 function optNeed(d){
-  return {beam:parseFloat(d[7])||0,spool:parseFloat(d[8])||0,rem:parseFloat(d[9])||0,times:parseFloat(d[11])||0,maxL:parseFloat(d[5])||0,maxSL:parseFloat(d[12])||0,desc:d[4]||d[3]}
+  return {beam:parseFloat(d[7])||0,spool:parseFloat(d[8])||0,rem:parseFloat(d[9])||0,times:parseFloat(d[11])||0,maxL:parseFloat(d[5])||0,maxSL:parseFloat(d[12])||0,needLen:parseFloat(d[14])||0,desc:d[4]||d[3]}
 }
 function optBest(d,orderLen,orderQty){
   var n=optNeed(d);
@@ -407,15 +407,14 @@ function optBest(d,orderLen,orderQty){
   var L=(orderLen-200)*n.times/n.beam;
   if(L<=0)return {ok:false,reason:'整经长度无效',qty:qty,need:n,L:0};
   if(L>n.maxL)return {ok:false,reason:'超出最大整经长度',qty:qty,need:n,L:L};
-  var needLen=n.beam*L;
-  var needLenPer=qty?needLen/qty:0;
-  var lossLen=orderLen-needLenPer;
-  if(lossLen<0)return {ok:false,reason:'线轴长不足',qty:qty,need:n,L:L,needLen:needLen};
+  var needLen=n.needLen||n.beam*L;
+  var lossLen=needLen/n.times-orderLen;
+  if(lossLen>0)return {ok:false,reason:'线轴长不足',qty:qty,need:n,L:L,needLen:needLen,lossLen:lossLen};
   var extraSpool=Math.max(0,orderQty-qty);
   var sw=parseFloat(d[13])||0,ms=parseFloat(d[12])||0;
   var wt1=ms?sw/ms*lossLen*qty:0;
   var wt2=ms?sw/ms*lossLen*extraSpool:0;
-  return {ok:true,reason:'可用',L:L,needLen:needLen,needLenPer:needLenPer,lossLen:lossLen,extraSpool:extraSpool,wt1:wt1,wt2:wt2,totalWaste:wt1+wt2,qty:qty,need:n}
+  return {ok:true,reason:'可用',L:L,needLen:needLen,lossLen:lossLen,extraSpool:extraSpool,wt1:wt1,wt2:wt2,totalWaste:wt1+wt2,qty:qty,need:n}
 }
 function renderOpt(bodyId,recId,rows,orderLen,orderQty,tb){
   var body=document.getElementById(bodyId),rec=document.getElementById(recId);
