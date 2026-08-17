@@ -408,7 +408,7 @@ function optBest(d,orderLen,orderQty){
   if(L<=0)return {ok:false,reason:'整经长度无效',qty:qty,need:n,L:0};
   if(L>n.maxL)L=n.maxL;
   var needLen=n.needLen||n.beam*L;
-  var lossLen=needLen/n.times-orderLen;
+  var lossLen=needLen-orderLen;
   if(lossLen>0)return {ok:false,reason:'线轴长不足',qty:qty,need:n,L:L,needLen:needLen,lossLen:lossLen};
   var extraSpool=Math.max(0,orderQty-qty);
   var sw=parseFloat(d[13])||0,ms=parseFloat(d[12])||0;
