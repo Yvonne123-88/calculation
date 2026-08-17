@@ -406,7 +406,7 @@ function optBest(d,orderLen,orderQty){
   var qty=(n.spool+n.rem)*n.times;
   var L=(orderLen-200)*n.times/n.beam;
   if(L<=0)return {ok:false,reason:'整经长度无效',qty:qty,need:n,L:0};
-  if(L>n.maxL)return {ok:false,reason:'超出最大整经长度',qty:qty,need:n,L:L};
+  if(L>n.maxL)L=n.maxL;
   var needLen=n.needLen||n.beam*L;
   var lossLen=needLen/n.times-orderLen;
   if(lossLen>0)return {ok:false,reason:'线轴长不足',qty:qty,need:n,L:L,needLen:needLen,lossLen:lossLen};
