@@ -420,7 +420,7 @@ function optBest(d,orderLen,orderQty){
     var wt1=ms?sw/ms*lossLen*qty:0;
     var wt2=ms?sw/ms*lossLen*extraSpool:0;
     var total=wt1+wt2;
-    if(!best||total<best.totalWaste)best={t:t,L:L,needLen:needLen,qty:qty,extraSpool:extraSpool,lossLen:lossLen,wt1:wt1,wt2:wt2,totalWaste:total}
+    if(!best||L>best.L||(L===best.L&&total<best.totalWaste))best={t:t,L:L,needLen:needLen,qty:qty,extraSpool:extraSpool,lossLen:lossLen,wt1:wt1,wt2:wt2,totalWaste:total}
   }
   if(!best)return {ok:false,reason:'无合适上架次数',need:n};
   return {ok:true,reason:'可用',times:best.t,L:best.L,needLen:best.needLen,qty:best.qty,extraSpool:best.extraSpool,lossLen:best.lossLen,wt1:best.wt1,wt2:best.wt2,totalWaste:best.totalWaste,need:n}
@@ -437,7 +437,7 @@ function renderOpt(bodyId,recId,rows,orderLen,orderQty,tb){
     html+='<td>'+n.desc+'</td><td>'+n.beam+'</td><td>'+n.spool+'</td><td>'+n.rem+'</td><td>'+n.maxL+'</td>';
     if(r.ok){
       html+='<td>'+fm(r.times)+'</td><td>'+fm(r.L)+'</td><td>'+fm(r.needLen)+'</td><td>'+fm(r.qty)+'</td><td>'+fm(r.extraSpool)+'</td><td>'+fm(r.wt1)+'</td><td>'+fm(r.wt2)+'</td><td>'+fm(r.totalWaste)+'</td><td>可用</td>';
-      if(!bestItem||r.totalWaste<bestItem.r.totalWaste)bestItem={d:d,r:r}
+      if(!bestItem||r.L>bestItem.r.L||(r.L===bestItem.r.L&&r.totalWaste<bestItem.r.totalWaste))bestItem={d:d,r:r}
     }else{
       html+='<td colspan="7" style="color:#dc2626">'+r.reason+'</td>'
     }
