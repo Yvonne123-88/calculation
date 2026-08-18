@@ -413,7 +413,6 @@ function optBest(d,orderLen,orderQty){
     var L=base*t/n.beam;
     var needLen=n.needLen||n.beam*L;
     var lossLen=needLen-orderLen;
-    if(lossLen>0)continue;
     var qty=(n.spool+n.rem)*t;
     if(qty>orderQty)continue;
     var extraSpool=orderQty-qty;
