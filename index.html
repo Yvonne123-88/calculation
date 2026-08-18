@@ -179,10 +179,10 @@ T/B:线轴长=经长×经盘数 | 订购线轴=线轴长/上架次+200 | 线轴�
 </div>
 <button class="calc-btn" id="optBtn">查找最优解</button>
 <div style="font-size:10px;font-weight:600;color:#374151;margin:6px 0 3px">Top 最优解</div>
-<div class="ref-wrap" style="max-height:220px"><table class="ref-table"><thead><tr><th>描述</th><th>经盘</th><th>线轴</th><th>盘余</th><th>上架</th><th>最大经长</th><th>最优整经长</th><th>所需线轴长</th><th>需线轴数</th><th>多余线轴</th><th>线轴损耗重量</th><th>多余损耗重量</th><th>总损耗重量</th><th>状态</th></tr></thead><tbody id="optTopBody"></tbody></table></div>
+<div class="ref-wrap" style="max-height:220px"><table class="ref-table"><thead><tr><th>描述</th><th>经盘</th><th>线轴</th><th>盘余</th><th>最大经长</th><th>推荐上架次数</th><th>最优整经长</th><th>所需线轴长</th><th>需线轴数</th><th>多余线轴</th><th>线轴损耗重量</th><th>多余损耗重量</th><th>总损耗重量</th><th>状态</th></tr></thead><tbody id="optTopBody"></tbody></table></div>
 <div id="optTopRec" style="font-size:10px;color:#1e40af;margin:3px 0 6px"></div>
 <div style="font-size:10px;font-weight:600;color:#374151;margin:6px 0 3px">Bot 最优解</div>
-<div class="ref-wrap" style="max-height:220px"><table class="ref-table"><thead><tr><th>描述</th><th>经盘</th><th>线轴</th><th>盘余</th><th>上架</th><th>最大经长</th><th>最优整经长</th><th>所需线轴长</th><th>需线轴数</th><th>多余线轴</th><th>线轴损耗重量</th><th>多余损耗重量</th><th>总损耗重量</th><th>状态</th></tr></thead><tbody id="optBotBody"></tbody></table></div>
+<div class="ref-wrap" style="max-height:220px"><table class="ref-table"><thead><tr><th>描述</th><th>经盘</th><th>线轴</th><th>盘余</th><th>最大经长</th><th>推荐上架次数</th><th>最优整经长</th><th>所需线轴长</th><th>需线轴数</th><th>多余线轴</th><th>线轴损耗重量</th><th>多余损耗重量</th><th>总损耗重量</th><th>状态</th></tr></thead><tbody id="optBotBody"></tbody></table></div>
 <div id="optBotRec" style="font-size:10px;color:#1e40af;margin:3px 0 0"></div>
 </div>
 
@@ -402,19 +402,28 @@ function optNeed(d){
 }
 function optBest(d,orderLen,orderQty){
   var n=optNeed(d);
-  if(!n.beam||!n.times||!n.maxL)return null;
-  var qty=(n.spool+n.rem)*n.times;
-  var L=(orderLen-200)*n.times/n.beam;
-  if(L<=0)return {ok:false,reason:'整经长度无效',qty:qty,need:n,L:0};
-  if(L>n.maxL)L=n.maxL;
-  var needLen=n.needLen||n.beam*L;
-  var lossLen=needLen-orderLen;
-  if(lossLen>0)return {ok:false,reason:'线轴长不足',qty:qty,need:n,L:L,needLen:needLen,lossLen:lossLen};
-  var extraSpool=Math.max(0,orderQty-qty);
-  var sw=parseFloat(d[13])||0,ms=parseFloat(d[12])||0;
-  var wt1=ms?sw/ms*lossLen*qty:0;
-  var wt2=ms?sw/ms*lossLen*extraSpool:0;
-  return {ok:true,reason:'可用',L:L,needLen:needLen,lossLen:lossLen,extraSpool:extraSpool,wt1:wt1,wt2:wt2,totalWaste:wt1+wt2,qty:qty,need:n}
+  if(!n.beam||!n.maxL)return null;
+  var base=orderLen-200;
+  if(base<=0)return {ok:false,reason:'订购线轴长需大于200',need:n};
+  var tMax=Math.floor(n.maxL*n.beam/base);
+  if(tMax<1)return {ok:false,reason:'无合适上架次数',need:n};
+  var best=null;
+  for(var t=1;t<=tMax;t++){
+    if(n.beam%t!==0)continue;
+    var L=base*t/n.beam;
+    var needLen=n.needLen||n.beam*L;
+    var lossLen=needLen-orderLen;
+    if(lossLen>0)continue;
+    var qty=(n.spool+n.rem)*t;
+    var extraSpool=Math.max(0,orderQty-qty);
+    var sw=parseFloat(d[13])||0,ms=parseFloat(d[12])||0;
+    var wt1=ms?sw/ms*lossLen*qty:0;
+    var wt2=ms?sw/ms*lossLen*extraSpool:0;
+    var total=wt1+wt2;
+    if(!best||total<best.totalWaste)best={t:t,L:L,needLen:needLen,qty:qty,extraSpool:extraSpool,lossLen:lossLen,wt1:wt1,wt2:wt2,totalWaste:total}
+  }
+  if(!best)return {ok:false,reason:'无合适上架次数',need:n};
+  return {ok:true,reason:'可用',times:best.t,L:best.L,needLen:best.needLen,qty:best.qty,extraSpool:best.extraSpool,lossLen:best.lossLen,wt1:best.wt1,wt2:best.wt2,totalWaste:best.totalWaste,need:n}
 }
 function renderOpt(bodyId,recId,rows,orderLen,orderQty,tb){
   var body=document.getElementById(bodyId),rec=document.getElementById(recId);
@@ -425,17 +434,17 @@ function renderOpt(bodyId,recId,rows,orderLen,orderQty,tb){
     if(!r){html+='<tr><td colspan="14">参数缺失</td></tr>';return}
     var n=r.need;
     html+='<tr style="opacity:'+(r.ok?1:.5)+'">';
-    html+='<td>'+n.desc+'</td><td>'+n.beam+'</td><td>'+n.spool+'</td><td>'+n.rem+'</td><td>'+n.times+'</td><td>'+n.maxL+'</td>';
+    html+='<td>'+n.desc+'</td><td>'+n.beam+'</td><td>'+n.spool+'</td><td>'+n.rem+'</td><td>'+n.maxL+'</td>';
     if(r.ok){
-      html+='<td>'+fm(r.L)+'</td><td>'+fm(r.needLen)+'</td><td>'+fm(r.qty)+'</td><td>'+fm(r.extraSpool)+'</td><td>'+fm(r.wt1)+'</td><td>'+fm(r.wt2)+'</td><td>'+fm(r.totalWaste)+'</td><td>可用</td>';
+      html+='<td>'+fm(r.times)+'</td><td>'+fm(r.L)+'</td><td>'+fm(r.needLen)+'</td><td>'+fm(r.qty)+'</td><td>'+fm(r.extraSpool)+'</td><td>'+fm(r.wt1)+'</td><td>'+fm(r.wt2)+'</td><td>'+fm(r.totalWaste)+'</td><td>可用</td>';
       if(!bestItem||r.totalWaste<bestItem.r.totalWaste)bestItem={d:d,r:r}
     }else{
-      html+='<td colspan="8" style="color:#dc2626">'+r.reason+'</td>'
+      html+='<td colspan="7" style="color:#dc2626">'+r.reason+'</td>'
     }
     html+='</tr>'
   });
   body.innerHTML=html;
-  rec.textContent=bestItem?'推荐：'+bestItem.r.need.desc+' | 最优整经长度 '+fm(bestItem.r.L)+' | 所需线轴长 '+fm(bestItem.r.needLen)+' | 线轴损耗重量 '+fm(bestItem.r.wt1)+' | 多余损耗重量 '+fm(bestItem.r.wt2)+' | 总损耗重量 '+fm(bestItem.r.totalWaste):'无可用匹配方案'
+  rec.textContent=bestItem?'推荐：'+bestItem.r.need.desc+' | 推荐上架次数 '+fm(bestItem.r.times)+' | 最优整经长度 '+fm(bestItem.r.L)+' | 所需线轴长 '+fm(bestItem.r.needLen)+' | 线轴损耗重量 '+fm(bestItem.r.wt1)+' | 多余损耗重量 '+fm(bestItem.r.wt2)+' | 总损耗重量 '+fm(bestItem.r.totalWaste):'无可用匹配方案'
 }
 document.getElementById('optBtn').addEventListener('click',function(){
   var loom=document.getElementById('optLoom').value.trim().toUpperCase();
