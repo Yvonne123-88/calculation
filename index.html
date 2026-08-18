@@ -415,7 +415,8 @@ function optBest(d,orderLen,orderQty){
     var lossLen=needLen-orderLen;
     if(lossLen>0)continue;
     var qty=(n.spool+n.rem)*t;
-    var extraSpool=Math.max(0,orderQty-qty);
+    if(qty>orderQty)continue;
+    var extraSpool=orderQty-qty;
     var sw=parseFloat(d[13])||0,ms=parseFloat(d[12])||0;
     var wt1=ms?sw/ms*lossLen*qty:0;
     var wt2=ms?sw/ms*lossLen*extraSpool:0;
